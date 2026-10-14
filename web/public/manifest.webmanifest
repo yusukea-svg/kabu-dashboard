@@ -1,0 +1,11 @@
+{
+  "name": "株ダッシュボード",
+  "short_name": "株ダッシュ",
+  "description": "個人用の日本株情報ダッシュボード（投資助言ではありません）",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ja",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

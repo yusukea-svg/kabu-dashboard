@@ -1,0 +1,38 @@
+name: bench
+
+# 場中更新の対象数 N を決めるための実測（手動実行のみ）。
+# 結果は Discord と job_runs（ダッシュボードのDB）に残る。ログには件数と秒数だけが出る。
+on:
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: "試す件数（カンマ区切り）"
+        default: "100,300,500,1000,1756"
+      pause:
+        description: "各回の間の待機秒数"
+        default: "60"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: batch
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults: { run: { working-directory: batch } }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      - run: uv run kabu-batch bench --sizes "$SIZES" --pause "$PAUSE"
+        env:
+          SIZES: ${{ inputs.sizes }}
+          PAUSE: ${{ inputs.pause }}

@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    # 取得データや秘密情報がコミットされていないかの検査
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No market data / secrets in the repo
+        run: |
+          bad=$(git ls-files | grep -Ei '\.(csv|tsv|parquet|feather|sqlite3?|db|xlsx?)$|(^|/)\.env($|\.)|(^|/)data/' \
+                | grep -v '^\.env\.example$' | grep -v '^batch/tests/fixtures/' || true)
+          if [ -n "$bad" ]; then echo "コミットしてはいけないファイル:"; echo "$bad"; exit 1; fi
+
+  batch:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: batch } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npm run build

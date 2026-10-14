@@ -1,0 +1,36 @@
+name: intraday
+
+# 場中バッチ（平日 12:05 / 15:05 JST）。場中更新の対象銘柄の現在値（約20分遅延）とシグナル。
+# cron が大きく遅れて 16:00 JST を過ぎた場合や休場日は、バッチ側で何もせず終わる。
+on:
+  schedule:
+    - cron: "5 3,6 * * 1-5"  # 12:05 / 15:05 JST
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "休場日・時間外でも実行する"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: batch
+  cancel-in-progress: false
+
+jobs:
+  intraday:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: batch } }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      - run: uv run kabu-batch intraday ${{ inputs.force && '--force' || '' }}

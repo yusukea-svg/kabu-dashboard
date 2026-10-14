@@ -1,0 +1,60 @@
+name: daily
+
+# 日次バッチ（平日 18:05 JST が本番、20:35 JST が予備）。
+# cron は UTC。GitHub の cron は遅れたり飛ばされたりするので、2回走らせて冪等にしてある
+# （当日分が取得済みなら2回目はすぐ終わる）。休場日はバッチ側で判定して skipped を記録する。
+on:
+  schedule:
+    - cron: "5 9 * * 1-5"    # 18:05 JST
+    - cron: "35 11 * * 1-5"  # 20:35 JST（予備）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "休場日・取得済みでも実行する"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: batch
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: batch } }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      # 注意：公開リポジトリのログは誰でも見られる。バッチは件数しか出力しない。
+      - run: uv run kabu-batch daily ${{ inputs.force && '--force' || '' }}
+
+  keepalive:
+    # 公開リポジトリは60日間コミットがないと定期実行が止まる。
+    # 最終コミットから45日経っていたら、日付だけのファイルをコミットして止まらないようにする。
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit a timestamp if the repo has been idle for 45 days
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( now - last )) -lt $(( 45 * 86400 )) ]; then echo "最近のコミットあり"; exit 0; fi
+          date -u +%Y-%m-%dT%H:%M:%SZ > .github/keepalive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive
+          git commit -m "chore: keepalive"
+          git push

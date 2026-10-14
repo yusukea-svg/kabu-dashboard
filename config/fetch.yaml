@@ -1,0 +1,26 @@
+# データ取得の設定
+
+listing:
+  # JPX「東証上場銘柄一覧」の掲載ページ。ページ内の data_j.xls(x) のリンクを探して取得する。
+  # リポジトリには保存しない。
+  page_url: https://www.jpx.co.jp/markets/statistics-equities/misc/01.html
+  refresh_days: 7          # これより古ければ再取得
+
+daily:
+  provider: yfinance
+  lookback_calendar_days: 450  # 毎回取り直す期間（SMA200 + 余裕）。リクエスト数は期間に依存しない
+  history_trading_days: 300    # DBに保持する日足の本数
+  upsert_recent_days: 10       # 通常日にDBへ書き戻す直近日数（分割があった銘柄は全期間）
+  chunk_size: 100              # 1回の yf.download に渡す銘柄数
+  sleep_seconds: 3             # チャンク間の待機
+  retry_rounds: 2              # 失敗銘柄の再試行回数
+  retry_sleep_seconds: 30      # 再試行前の待機（指数的に増やす）
+
+intraday:
+  # 12:05 / 15:05 JST に起動。cron が大きく遅れてこの時間帯を外れたら何もしない（18時の日次に任せる）
+  window_start: "09:00"
+  window_end: "16:00"
+  chunk_size: 100
+  sleep_seconds: 3
+  retry_rounds: 1
+  retry_sleep_seconds: 30

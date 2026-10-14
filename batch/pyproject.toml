@@ -1,0 +1,38 @@
+[project]
+name = "kabu-batch"
+version = "0.1.0"
+description = "日本株 情報ダッシュボードのデータ取得・指標計算バッチ（個人利用）"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.27",
+  "jpholiday>=0.1.10",
+  "numpy>=1.26",
+  "openpyxl>=3.1.5",
+  "pandas>=2.2",
+  "pyyaml>=6.0",
+  "xlrd>=2.0",
+  "yfinance>=0.2.54",
+]
+
+[project.scripts]
+kabu-batch = "kabu_batch.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kabu_batch"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

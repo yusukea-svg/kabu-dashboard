@@ -1,0 +1,47 @@
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Market data (never commit: provider terms forbid redistribution) ---
+data/
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.sqlite
+*.sqlite3
+*.db
+*.xls
+*.xlsx
+!batch/tests/fixtures/*.csv
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# --- Node / Next.js ---
+node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# --- Claude Code local settings ---
+.claude/

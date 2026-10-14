@@ -1,0 +1,59 @@
+# シグナル（条件）の定義。条件を満たした「その日」に1回だけ記録・通知する。
+#
+# type:
+#   cross_up       : fast が slow を下から上に抜けた（前日 fast<=slow かつ 当日 fast>slow）
+#   cross_down     : fast が slow を上から下に抜けた
+#   threshold_down : field が value を下回った（前日 >= value かつ 当日 < value）
+#   threshold_up   : field が value を上回った（前日 <= value かつ 当日 > value）
+# 使える列: close, sma5, sma25, sma75, sma200, ema12, ema26, rsi14, macd, macd_signal, bb_upper, bb_lower
+
+# 通知する銘柄の範囲（記録はユニバース全体）
+#   intraday : 場中更新の対象（売買代金上位N件）だけ通知  ← 通知が多すぎないように初期値はこちら
+#   universe : ユニバース全体を通知
+notify_scope: intraday
+
+# 1回の通知で1種類あたり何銘柄まで載せるか（残りは「ほか○件」）
+notify_max_per_rule: 15
+
+rules:
+  - id: golden_cross_25_75
+    label: ゴールデンクロス（25日/75日）
+    type: cross_up
+    fast: sma25
+    slow: sma75
+    notify: true
+
+  - id: dead_cross_25_75
+    label: デッドクロス（25日/75日）
+    type: cross_down
+    fast: sma25
+    slow: sma75
+    notify: true
+
+  - id: rsi_below_30
+    label: RSI 30割れ
+    type: threshold_down
+    field: rsi14
+    value: 30
+    notify: true
+
+  - id: rsi_above_70
+    label: RSI 70超え
+    type: threshold_up
+    field: rsi14
+    value: 70
+    notify: true
+
+  - id: macd_cross_up
+    label: MACD ゴールデンクロス
+    type: cross_up
+    fast: macd
+    slow: macd_signal
+    notify: false   # 記録だけして通知はしない
+
+  - id: bb_lower_break
+    label: ボリンジャー下限割れ
+    type: cross_down
+    fast: close
+    slow: bb_lower
+    notify: false
