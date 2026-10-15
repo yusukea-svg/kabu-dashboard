@@ -29,6 +29,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Link href="/" className="brand">
             株ダッシュボード
           </Link>
+          <nav className="nav">
+            <Link href="/">銘柄</Link>
+            <Link href="/market/">マーケット</Link>
+          </nav>
         </header>
         <main>
           <AuthGate>{children}</AuthGate>

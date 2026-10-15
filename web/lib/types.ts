@@ -55,3 +55,35 @@ export type Signal = {
   detail: { label?: string; close?: number; [k: string]: unknown } | null;
   notified_at: string | null;
 };
+
+export type MacroMeta = {
+  series_id: string;
+  label: string;
+  category: string;
+  unit: string | null;
+  source: string;
+  sort_order: number;
+  updated_at: string;
+};
+
+export type MacroPoint = { series_id: string; date: string; value: number };
+
+export type NewsItem = {
+  id: string;
+  source: string;
+  title: string;
+  url: string;
+  published_at: string | null;
+  fetched_at: string;
+};
+
+export type Disclosure = {
+  id: string;
+  code: string;
+  name?: string;
+  source: string;
+  doc_type: string | null;
+  title: string;
+  submitted_at: string | null;
+  url: string;
+};

@@ -156,3 +156,30 @@ GitHub の **Actions** タブで、各ワークフローを **Run workflow** か
 
 以降は平日 12:05 / 15:05（場中）と 18:05（日次、予備 20:35）に自動で動く。
 GitHub の cron は数分〜数十分遅れることがある。
+
+---
+
+# フェーズ3：マクロ指標・ニュース・開示
+
+## 12. DBにテーブルを追加する
+
+Supabase の SQL Editor で `supabase/migrations/0003_market_info.sql` を実行。
+
+## 13. APIキーを取る（どちらも無料・未設定ならその部分だけスキップされる）
+
+| キー | 用途 | 取り方 |
+|------|------|--------|
+| `FRED_API_KEY` | 米国金利（10年・2年・FF金利） | https://fredaccount.stlouisfed.org でアカウント作成 → **API Keys** → **Request API Key**（用途は「personal dashboard」など） |
+| `EDINET_API_KEY` | 有価証券報告書・臨時報告書などの一覧 | https://api.edinet-fsa.go.jp/api/auth/index.aspx?mode=1 でアカウント作成（電話番号の認証あり）→ 表示される **APIキー** |
+
+取ったキーはリポジトリ直下の `.env` に `FRED_API_KEY=...` / `EDINET_API_KEY=...` として追記し、
+GitHub の Secrets にも同じ名前で登録する（`.env` から登録する手順はこちらで実行可能）。
+
+## 14. 動作確認
+
+- 手元：`cd batch && uv run kabu-batch info`（初回の EDINET は過去120日分を読むので2〜3分）
+- GitHub：Actions → **info** → Run workflow
+- 画面：上部の **マーケット** に指数・為替・金利のカード、ニュース、直近7日の開示。
+  銘柄ページの下に「開示」と、適時開示（決算短信など）を見るための外部リンク。
+
+以降は平日 7:35 / 12:35 / 18:35、土日 9:35 JST に自動更新。

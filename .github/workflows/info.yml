@@ -1,0 +1,40 @@
+name: info
+
+# 世界情勢・企業情報（マクロ指標・ニュース・EDINET開示）。
+# 平日 7:35（寄り付き前）/ 12:35 / 18:35 JST。土日も朝1回ニュースとマクロだけ更新する。
+on:
+  schedule:
+    - cron: "35 22 * * 0-4"   # 月〜金 7:35 JST
+    - cron: "35 3,9 * * 1-5"  # 12:35 / 18:35 JST
+    - cron: "35 0 * * 0,6"    # 土日 9:35 JST
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "実行するもの（macro,news,edinet）"
+        default: "macro,news,edinet"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: info
+  cancel-in-progress: false
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: batch } }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      EDINET_API_KEY: ${{ secrets.EDINET_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      - run: uv run kabu-batch info --only "$ONLY"
+        env:
+          ONLY: ${{ inputs.only || 'macro,news,edinet' }}

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { changeClass, fmtDateTime, fmtNum, fmtPct, fmtPrice, fmtShares, fmtYen } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { DailyBar, Snapshot } from "@/lib/types";
+import DisclosureList from "./DisclosureList";
 import SignalList from "./SignalList";
 import StockChart, { type Overlays } from "./StockChart";
 
@@ -100,6 +101,7 @@ export default function StockDetail() {
       )}
 
       <SignalList code={code} />
+      <DisclosureList code={code} />
     </section>
   );
 }

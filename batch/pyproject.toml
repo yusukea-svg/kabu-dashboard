@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "日本株 情報ダッシュボードのデータ取得・指標計算バッチ（個人利用）"
 requires-python = ">=3.12"
 dependencies = [
+  "feedparser>=6.0.14",
   "httpx>=0.27",
   "jpholiday>=0.1.10",
   "numpy>=1.26",

@@ -17,6 +17,7 @@ import sys
 from .config import REPO_ROOT, load_settings, require_env
 from .jobs.bench import run_bench
 from .jobs.daily import run_daily
+from .jobs.info import PARTS, run_info
 from .jobs.intraday import run_intraday
 from .notify import Notifier
 from .providers.jpx_listing import JpxListingProvider
@@ -24,7 +25,7 @@ from .providers.yfinance_provider import YFinanceDailyProvider
 from .storage.base import MemoryStore
 from .storage.supabase_store import SupabaseStore
 
-JOB_LABELS = {"daily": "日次", "intraday": "場中", "bench": "実測"}
+JOB_LABELS = {"daily": "日次", "intraday": "場中", "bench": "実測", "info": "情報"}
 
 
 def _load_dotenv() -> None:
@@ -66,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--sizes", default="100,300,500", help="カンマ区切りの件数")
     b.add_argument("--pause", type=float, default=60, help="各回の間の待機秒数")
 
+    f = sub.add_parser("info", help="マクロ指標・ニュース・EDINET開示の取得")
+    f.add_argument("--only", default=",".join(PARTS), help="macro,news,edinet のうち実行するもの")
+
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -103,6 +107,15 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 notifier=notifier,
             )
+        elif args.cmd == "info":
+            parts = [p.strip() for p in args.only.split(",") if p.strip() in PARTS]
+            results = run_info(_store(False), settings.sources, parts)
+            for r in results:
+                print(f"[{r.job}] {r.status}: {r.message}")
+            bad = [r for r in results if r.status in ("failed", "partial")]
+            if bad:
+                notifier.send("⚠️ 情報取得で一部失敗：" + " ／ ".join(f"{r.job}={r.status}" for r in bad))
+            return 1 if any(r.status == "failed" for r in results) else 0
         else:
             c = settings.intraday
             run_bench(

@@ -40,6 +40,10 @@ class Store(Protocol):
 
     def universe_by_value(self) -> list[str]: ...
 
+    def delete_where_lt(self, table: str, column: str, value: str) -> None: ...
+
+    def max_value(self, table: str, column: str) -> str | None: ...
+
 
 class MemoryStore:
     """ドライラン・テスト用。書き込み内容を保持するだけ。"""
@@ -121,3 +125,12 @@ class MemoryStore:
     def universe_by_value(self) -> list[str]:
         snaps = [v for v in self.tables.get("snapshots", {}).values() if v.get("in_universe")]
         return [s["code"] for s in sorted(snaps, key=lambda s: -(s.get("avg_value20") or 0))]
+
+    def delete_where_lt(self, table: str, column: str, value: str) -> None:
+        t = self.tables.get(table, {})
+        for k in [k for k, v in t.items() if v.get(column) is not None and str(v[column]) < value]:
+            del t[k]
+
+    def max_value(self, table: str, column: str) -> str | None:
+        vals = [str(v[column]) for v in self.tables.get(table, {}).values() if v.get(column) is not None]
+        return max(vals) if vals else None

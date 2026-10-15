@@ -150,3 +150,12 @@ class SupabaseStore:
         rows = self._get_all("/snapshots", {"select": "code", "in_universe": "eq.true",
                                             "order": "avg_value20.desc.nullslast"})
         return [r["code"] for r in rows]
+
+    def delete_where_lt(self, table: str, column: str, value: str) -> None:
+        self._check(self.client.delete(f"/{table}", params={column: f"lt.{value}"}))
+
+    def max_value(self, table: str, column: str) -> str | None:
+        resp = self._check(self.client.get(f"/{table}", params={
+            "select": column, "order": f"{column}.desc.nullslast", "limit": 1}))
+        rows = resp.json()
+        return rows[0][column] if rows else None

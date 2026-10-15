@@ -77,6 +77,7 @@ class Settings:
     daily: DailyFetchConfig
     intraday: IntradayConfig = field(default_factory=IntradayConfig)
     signals: SignalConfig = field(default_factory=SignalConfig)
+    sources: dict = field(default_factory=dict)  # config/sources.yaml（フェーズ3）
 
 
 def _read_yaml(name: str) -> dict:
@@ -97,6 +98,7 @@ def load_settings() -> Settings:
         daily=DailyFetchConfig(**fetch.get("daily", {})),
         intraday=IntradayConfig(**fetch.get("intraday", {})),
         signals=SignalConfig(rules=rules, **sig),
+        sources=_read_yaml("sources.yaml"),
     )
 
 
