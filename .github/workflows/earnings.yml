@@ -1,0 +1,37 @@
+name: earnings
+
+# 今週・来週の決算発表予定を日付別に Discord へ送る（毎週月曜 7:05 JST、9:05 JST が予備）。
+# cron は UTC。遅れ・飛ばし対策で2回走らせ、同じ日に送信済みなら2回目は何もしない。
+on:
+  schedule:
+    - cron: "5 22 * * 0"  # 月曜 7:05 JST
+    - cron: "5 0 * * 1"   # 月曜 9:05 JST（予備）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "本日送信済みでも送る"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: earnings
+  cancel-in-progress: false
+
+jobs:
+  earnings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: batch } }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      - run: uv run kabu-batch earnings ${{ inputs.force && '--force' || '' }}

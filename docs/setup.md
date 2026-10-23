@@ -183,3 +183,12 @@ GitHub の Secrets にも同じ名前で登録する（`.env` から登録する
   銘柄ページの下に「開示」と、適時開示（決算短信など）を見るための外部リンク。
 
 以降は平日 7:35 / 12:35 / 18:35、土日 9:35 JST に自動更新。
+
+# 決算発表予定の週次通知
+
+毎週月曜 7:05 JST（実際は30分ほど遅れる）に、今週と来週に決算発表する銘柄を日付別に Discord へ送る。
+データは JPX「決算発表予定日」の Excel（期末・四半期末の月ごとの一覧）。追加のキーや DB の変更は不要。
+
+- 対象銘柄と1日あたりの件数は `config/sources.yaml` の `earnings`（`scope` / `max_per_day`）で変える。
+- 手元：`cd batch && uv run kabu-batch earnings --force`（`--no-notify` で送らずに件数だけ確認）
+- GitHub：Actions → **earnings** → Run workflow（force にチェックすると同じ日でももう一度送る）

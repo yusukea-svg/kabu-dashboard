@@ -5,6 +5,7 @@
     uv run kabu-batch daily --full       # 初回：全期間を書き込む
     uv run kabu-batch intraday           # 場中バッチ（場中更新の対象だけ）
     uv run kabu-batch bench --sizes 100,300,500    # 取得件数の実測
+    uv run kabu-batch earnings           # 今週・来週の決算発表予定を通知（毎週月曜）
 """
 
 from __future__ import annotations
@@ -17,15 +18,18 @@ import sys
 from .config import REPO_ROOT, load_settings, require_env
 from .jobs.bench import run_bench
 from .jobs.daily import run_daily
+from .jobs.earnings import run_earnings
 from .jobs.info import PARTS, run_info
 from .jobs.intraday import run_intraday
+from .market_calendar import now_jst
 from .notify import Notifier
+from .providers.jpx_earnings import JpxEarningsProvider
 from .providers.jpx_listing import JpxListingProvider
 from .providers.yfinance_provider import YFinanceDailyProvider
 from .storage.base import MemoryStore
 from .storage.supabase_store import SupabaseStore
 
-JOB_LABELS = {"daily": "日次", "intraday": "場中", "bench": "実測", "info": "情報"}
+JOB_LABELS = {"daily": "日次", "intraday": "場中", "bench": "実測", "info": "情報", "earnings": "決算予定"}
 
 
 def _load_dotenv() -> None:
@@ -70,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
     f = sub.add_parser("info", help="マクロ指標・ニュース・EDINET開示の取得")
     f.add_argument("--only", default=",".join(PARTS), help="macro,news,edinet のうち実行するもの")
 
+    e = sub.add_parser("earnings", help="今週・来週の決算発表予定を通知")
+    e.add_argument("--force", action="store_true", help="本日送信済みでも送る")
+
     args = p.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -107,6 +114,12 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 notifier=notifier,
             )
+        elif args.cmd == "earnings":
+            cfg = settings.sources.get("earnings", {})
+            provider = JpxEarningsProvider(cfg.get("page_url", ""))
+            msg = run_earnings(_store(False), provider.fetch_events, notifier, cfg, now_jst().date(), force=args.force)
+            print(f"[earnings] {msg}")
+            return 0
         elif args.cmd == "info":
             parts = [p.strip() for p in args.only.split(",") if p.strip() in PARTS]
             results = run_info(_store(False), settings.sources, parts)
