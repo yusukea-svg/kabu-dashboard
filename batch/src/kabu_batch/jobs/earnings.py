@@ -79,7 +79,7 @@ def run_earnings(store: Store, fetch_events: Callable[[], list[EarningsEvent]], 
     run_id = store.start_job(JOB)
     try:
         scope = cfg.get("scope", "universe")
-        max_per_day = int(cfg.get("max_per_day", 30))
+        max_per_day = int(cfg.get("max_per_day", 0))
         start, end = week_window(today)
         events = [e for e in fetch_events() if start <= e.date <= end]
         if scope == "all":
