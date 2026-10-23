@@ -46,20 +46,29 @@ class Notifier:
         if not self.enabled:
             log.info("通知（Webhook未設定のため送信なし）: %d 文字", len(text))
             return
-        for chunk in split_message(text):
+        chunks = split_message(text)
+        ok = 0
+        for chunk in chunks:
             for attempt in range(3):
                 try:
                     r = httpx.post(self.url, json={"content": chunk, "allowed_mentions": {"parse": []}},
                                    timeout=20)
                     if r.status_code == 429:  # レート制限：指示された秒数待つ
+                        log.warning("Discord のレート制限（%d 回目）", attempt + 1)
                         time.sleep(float(r.json().get("retry_after", 2)))
                         continue
                     r.raise_for_status()
+                    ok += 1
                     break
                 except httpx.HTTPError as e:
-                    log.warning("Discord 通知に失敗（%d 回目）: %s", attempt + 1, type(e).__name__)
+                    status = getattr(getattr(e, "response", None), "status_code", "")
+                    log.warning("Discord 通知に失敗（%d 回目）: %s %s", attempt + 1, type(e).__name__, status)
                     time.sleep(2)
             time.sleep(0.5)
+        # 件数と HTTP の結果だけを出す（Webhook URL や本文はログに出さない）
+        log.info("Discord 通知: %d / %d 通を送信", ok, len(chunks))
+        if ok < len(chunks):
+            log.warning("Discord 通知の一部が送れませんでした（%d 通）", len(chunks) - ok)
 
 
 def dashboard_link(code: str | None = None) -> str:
