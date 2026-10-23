@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from urllib.parse import urljoin
@@ -70,14 +71,31 @@ def _code(v) -> str | None:
     return s if len(s) == 4 else None
 
 
-def parse_earnings_excel(content: bytes) -> list[EarningsEvent]:
-    raw = pd.read_excel(io.BytesIO(content), header=None)
-    # 見出し行は先頭ではない（タイトル行の下）。「コード」を含む行を探す
-    header_idx = next((i for i, row in raw.iterrows()
-                       if any(str(c).strip() == "コード" for c in row.tolist())), None)
-    if header_idx is None:
-        raise ValueError("決算発表予定日のExcelに見出し行（コード）が見つかりません")
-    cols = [str(c).strip() for c in raw.iloc[header_idx].tolist()]
+def _norm(v) -> str:
+    """見出しの比較用。全角・半角の違い、空白・改行（「コード\nCode」のような2段見出し）を無視する。"""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(v)))
+
+
+def _find_header(raw: pd.DataFrame) -> int | None:
+    for i, row in enumerate(raw.itertuples(index=False)):
+        if any(_norm(c).startswith("コード") for c in row):
+            return i
+    return None
+
+
+def _preview(raw: pd.DataFrame, rows: int = 8) -> str:
+    """見出しが見つからないときの調査用。先頭行の短い文字列だけを出す。"""
+    out = []
+    for row in raw.head(rows).itertuples(index=False):
+        cells = [_norm(c)[:15] for c in row if _norm(c)]
+        out.append("|".join(cells[:8]))
+    return " / ".join(out)
+
+
+def _parse_sheet(raw: pd.DataFrame, header_idx: int) -> list[EarningsEvent]:
+    cols = [_norm(c) for c in raw.iloc[header_idx].tolist()]
 
     def col(*cands: str) -> int | None:
         for cand in cands:
@@ -100,6 +118,23 @@ def parse_earnings_excel(content: bytes) -> list[EarningsEvent]:
     return out
 
 
+def parse_earnings_excel(content: bytes) -> list[EarningsEvent]:
+    # 見出し行は先頭ではない（タイトル行の下）。全シートから「コード」で始まる見出しを含む行を探す
+    sheets = pd.read_excel(io.BytesIO(content), header=None, sheet_name=None)
+    out: list[EarningsEvent] = []
+    found = False
+    for raw in sheets.values():
+        header_idx = _find_header(raw)
+        if header_idx is None:
+            continue
+        found = True
+        out += _parse_sheet(raw, header_idx)
+    if not found:
+        previews = "；".join(f"[{name}] {_preview(raw)}" for name, raw in sheets.items())
+        raise ValueError(f"決算発表予定日のExcelに見出し行（コード）が見つかりません: {previews}")
+    return out
+
+
 class JpxEarningsProvider:
     def __init__(self, page_url: str):
         self.page_url = page_url
@@ -112,10 +147,20 @@ class JpxEarningsProvider:
             if not links:
                 raise ValueError(f"JPXのページに決算発表予定日のファイルが見つかりません: {self.page_url}")
             events: dict[tuple[str, date], EarningsEvent] = {}
+            errors: list[str] = []
             for url in links:
                 resp = client.get(url)
                 resp.raise_for_status()
-                for e in parse_earnings_excel(resp.content):
+                try:
+                    parsed = parse_earnings_excel(resp.content)
+                except ValueError as e:
+                    # 形式の違うファイルが1つあっても、読めたファイルの分は通知する
+                    log.warning("%s を読めません: %s", url.rsplit("/", 1)[-1], e)
+                    errors.append(url)
+                    continue
+                for e in parsed:
                     events.setdefault((e.code, e.date), e)
-        log.info("決算発表予定: ファイル %d / %d 件", len(links), len(events))
+            if len(errors) == len(links):
+                raise ValueError("決算発表予定日のファイルをどれも読めませんでした（ログを参照）")
+        log.info("決算発表予定: ファイル %d（読めないもの %d）/ %d 件", len(links), len(errors), len(events))
         return list(events.values())

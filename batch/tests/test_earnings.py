@@ -109,3 +109,29 @@ def test_skip_when_sent_today():
     assert n.sent == []
     run_earnings(store, lambda: EVENTS, n, {}, date(2026, 10, 26), force=True)
     assert len(n.sent) == 1
+
+
+def test_parse_two_line_header_and_other_sheet():
+    """見出しが「コード\nCode」のような2段・全角の場合や、2枚目のシートにある場合も読める。"""
+    rows = [
+        ["決算発表予定日", None, None],
+        ["決算発表\n予定日\nScheduled Date", "コード\nCode", "会社名\nCompany Name"],
+        [46322, "7203", "トヨタ自動車"],
+    ]
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf) as w:
+        pd.DataFrame([["表紙"]]).to_excel(w, sheet_name="表紙", header=False, index=False)
+        pd.DataFrame(rows).to_excel(w, sheet_name="一覧", header=False, index=False)
+    events = parse_earnings_excel(buf.getvalue())
+    assert [(e.date, e.code, e.name) for e in events] == [(date(2026, 10, 27), "7203", "トヨタ自動車")]
+
+
+def test_parse_no_header_shows_preview():
+    buf = io.BytesIO()
+    pd.DataFrame([["お知らせ", "x"]]).to_excel(buf, header=False, index=False)
+    try:
+        parse_earnings_excel(buf.getvalue())
+    except ValueError as e:
+        assert "お知らせ" in str(e)
+    else:
+        raise AssertionError("ValueError が出るはず")
