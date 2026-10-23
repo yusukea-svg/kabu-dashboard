@@ -40,3 +40,10 @@ edinet:
     "180": 臨時報告書
     "220": 自己株券買付状況報告書
     "235": 内部統制報告書
+
+earnings:
+  # JPX「決算発表予定日」の掲載ページ。ページ内の kessan*.xlsx をすべて取得する。リポジトリには保存しない。
+  # 3月期・9月期に限らず、各月に期末・四半期末を迎えた会社の一覧が月ごとに載る。
+  page_url: https://www.jpx.co.jp/listing/event-schedules/financial-announcement/index.html
+  scope: universe          # universe（ユニバース）| intraday（場中更新の対象）| all（全上場銘柄）
+  max_per_day: 0           # 1日あたりに名前を載せる上限（売買代金の大きい順）。0 で上限なし（全銘柄）
